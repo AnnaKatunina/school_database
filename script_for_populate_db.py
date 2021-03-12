@@ -2,7 +2,7 @@ import random
 import string
 
 
-from models import Group, db, Course, Student
+from db_and_models import session, Group, Course, Student
 
 
 def create_groups():
@@ -11,23 +11,8 @@ def create_groups():
         group_number = ''.join(random.sample(string.ascii_uppercase, 2)) + '_' + \
                        ''.join(random.sample(string.digits, 2))
         group = Group(name=group_number)
-        db.session.add(group)
-        db.session.commit()
-
-
-def create_students():
-    first_name_list = ['Oliver', 'Steven', 'Amelia', 'Emily', 'Harry', 'Olivia', 'Jacob', 'Charlie', 'Mary', 'William',
-                       'Elizabeth', 'Jennifer', 'Thomas', 'Jessica', 'Margaret', 'Mark', 'Paul', 'Amy', 'Laura', 'Jack']
-    last_name_list = ['Smith', 'Jones', 'Taylor', 'Williams', 'Brown', 'White', 'Harris', 'Martin', 'Davies', 'Wilson',
-                      'Cooper', 'Evans', 'King', 'Thomas', 'Baker', 'Green', 'Johnson', 'Edwards', 'Clark', 'Lewis']
-
-    for _ in range(200):
-        first_name = random.choice(first_name_list)
-        last_name = random.choice(last_name_list)
-        group = random.randint(1, 20)
-        student = Student(first_name=first_name, last_name=last_name, group_id=group)
-        db.session.add(student)
-        db.session.commit()
+        session.add(group)
+        session.commit()
 
 
 def create_courses():
@@ -57,10 +42,25 @@ def create_courses():
                     }
     for course in courses_dict:
         one_course = Course(name=course, description=courses_dict[course])
-        db.session.add(one_course)
-        db.session.commit()
+        session.add(one_course)
+        session.commit()
 
 
-# create_groups()
-# create_courses()
-# create_students()
+def create_students():
+    first_name_list = ['Oliver', 'Steven', 'Amelia', 'Emily', 'Harry', 'Olivia', 'Jacob', 'Charlie', 'Mary', 'William',
+                       'Elizabeth', 'Jennifer', 'Thomas', 'Jessica', 'Margaret', 'Mark', 'Paul', 'Amy', 'Laura', 'Jack']
+    last_name_list = ['Smith', 'Jones', 'Taylor', 'Williams', 'Brown', 'White', 'Harris', 'Martin', 'Davies', 'Wilson',
+                      'Cooper', 'Evans', 'King', 'Thomas', 'Baker', 'Green', 'Johnson', 'Edwards', 'Clark', 'Lewis']
+
+    for _ in range(200):
+        first_name = random.choice(first_name_list)
+        last_name = random.choice(last_name_list)
+        group = random.randint(1, 20)
+        student = Student(first_name=first_name, last_name=last_name, group_id=group)
+        number_of_courses = random.randint(1, 3)
+        for _ in range(number_of_courses):
+            course_id = random.randint(1, 10)
+            course = session.query(Course).get(course_id)
+            student.courses.append(course)
+        session.add(student)
+        session.commit()
