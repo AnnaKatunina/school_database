@@ -7,6 +7,16 @@ from db_and_models import Base, engine, Student, students_courses
 from main_app import app
 
 
+class CommonTest(unittest.TestCase):
+
+    def setUp(self):
+        self.tester = app.test_client()
+        Base.metadata.create_all(engine)
+        Session = sessionmaker(bind=engine)
+        self.session = Session()
+        self.models_to_delete_after_each_test = []
+
+
 class GroupTest(unittest.TestCase):
 
     def test_get_all_groups(self):
@@ -24,25 +34,22 @@ class GroupTest(unittest.TestCase):
         self.assertFalse(b'{"id":1,"name":"DG_81","number_of_students":14}' in response.data)
 
 
-class StudentTest(unittest.TestCase):
+class StudentTest(CommonTest):
 
-    def setUp(self):
-        self.tester = app.test_client()
-        Base.metadata.create_all(engine)
-        Session = sessionmaker(bind=engine)
-        self.session = Session()
-        self.models_to_delete_after_each_test = []
-        self.url = '/api/v1/students'
+    def tearDown(self):
+        for model in self.models_to_delete_after_each_test:
+            self.session.delete(model)
+            self.session.commit()
 
     def test_get_all_students(self):
-        response = self.tester.get(self.url)
+        response = self.tester.get('/api/v1/students')
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.content_type, "application/json")
         self.assertTrue(b'{"id":1,"first_name":"Charlie","last_name":"King","group_id":19,'
                         b'"courses":["Algebra","Biology"]}' in response.data)
 
     def test_get_all_students_with_course_name(self):
-        response = self.tester.get(self.url + '?course_name=math')
+        response = self.tester.get('/api/v1/students?course_name=math')
         self.assertEqual(response.status_code, 200)
         self.assertTrue(b'{"id":16,"first_name":"Paul","last_name":"Thomas","group_id":9,'
                         b'"courses":["Computing","Math"]}' in response.data)
@@ -54,7 +61,7 @@ class StudentTest(unittest.TestCase):
             'first_name': 'Test_first_name',
             'last_name': 'Test_last_name'
         })
-        response = self.tester.post(self.url,
+        response = self.tester.post('/api/v1/students',
                                     headers={"Content-Type": "application/json"},
                                     data=student_test)
 
@@ -72,30 +79,23 @@ class StudentTest(unittest.TestCase):
         })
         self.session.add(student)
         self.session.commit()
-        response = self.tester.delete(self.url,
+        response = self.tester.delete('/api/v1/students',
                                       headers={"Content-Type": "application/json"},
                                       data=student_test)
         self.assertEqual(response.status_code, 204)
 
+
+class CourseTest(CommonTest):
+
     def tearDown(self):
         for model in self.models_to_delete_after_each_test:
-            self.session.delete(model)
+            student = students_courses.delete().where(students_courses.columns.course_id == model[1]).\
+                where(students_courses.columns.student_id == model[0])
+            self.session.execute(student)
             self.session.commit()
 
-
-class CourseTest(unittest.TestCase):
-
-    def setUp(self):
-        self.tester = app.test_client()
-        Base.metadata.create_all(engine)
-        Session = sessionmaker(bind=engine)
-        self.session = Session()
-        self.models_to_delete_after_each_test = []
-        self.url = '/api/v1/courses'
-
     def test_get_all_courses(self):
-        tester = app.test_client(self)
-        response = tester.get(self.url)
+        response = self.tester.get('/api/v1/courses')
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.content_type, "application/json")
 
@@ -104,7 +104,7 @@ class CourseTest(unittest.TestCase):
             'id_course': '10',
             'id_student': '2'
         })
-        response = self.tester.post(self.url,
+        response = self.tester.post('/api/v1/courses',
                                     headers={"Content-Type": "application/json"},
                                     data=student_test)
 
@@ -122,17 +122,10 @@ class CourseTest(unittest.TestCase):
             'student_id': '5',
             'course_id': '5'
         })
-        response = self.tester.delete(self.url,
+        response = self.tester.delete('/api/v1/courses',
                                       headers={"Content-Type": "application/json"},
                                       data=student_test)
         self.assertEqual(response.status_code, 200)
-
-    def tearDown(self):
-        for model in self.models_to_delete_after_each_test:
-            student = students_courses.delete().where(students_courses.columns.course_id == model[1]).\
-                where(students_courses.columns.student_id == model[0])
-            self.session.execute(student)
-            self.session.commit()
 
 
 if __name__ == '__main__':
